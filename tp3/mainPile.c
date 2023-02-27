@@ -5,9 +5,6 @@
 #include "Pile.h"
 #include "utils_v1.h"
 
-void ajouterUneValeur(Pile p);
-void popPile(Pile p);
-
 int main(int argc, char const *argv[])
 {
     Pile pile = initPile();

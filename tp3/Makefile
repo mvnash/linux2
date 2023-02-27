@@ -1,6 +1,6 @@
-CFLAGS=-std=c11 -pedantic -Wvla -Werror -Wall -D_DEFAULT_SOURCE
+CFLAGS=-std=c11 -pedantic -Wvla -Werror -Wall -D_DEFAULT_SOURCE -g
 
-all: mainPile
+all: mainPile notationPolonaise
 
 Pile.o : Pile.c Pile.h
 	cc $(CFLAGS) -c Pile.c
@@ -14,6 +14,13 @@ mainPile.o : mainPile.c Pile.h
 mainPile : Pile.o utils_v1.o mainPile.o
 	cc $(CFLAGS) -o mainPile Pile.o utils_v1.o mainPile.o
 
+notationPolonaise.o: Pile.o utils_v1.o notationPolonaise.c
+	cc $(CFLAGS) -c notationPolonaise.c
+
+notationPolonaise : Pile.o utils_v1.o notationPolonaise.o
+	cc $(CFLAGS) -o notationPolonaise Pile.o utils_v1.o notationPolonaise.o
+
 clean :
 	rm -f *.o
 	rm -f mainPile
+	rm -f notationPolonaise
