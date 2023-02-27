@@ -36,6 +36,17 @@ int pop(Pile *p)
 
 void viderPile(Pile *p)
 {
+    if (pileVide(*p)) 
+    {
+        return;
+    }
+    Pile pile = *p;
+    while (pile->bottom != NULL)
+    {
+        free(pile);
+        pile = pile->bottom;
+    }
+    free(*p);
     *p = NULL;
 }
 

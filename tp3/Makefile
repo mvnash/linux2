@@ -8,7 +8,7 @@ Pile.o : Pile.c Pile.h
 utils_v1.o : utils_v1.c utils_v1.h
 	cc $(CFLAGS) -c utils_v1.c
 
-mainPile.o : mainPile.c pile.h
+mainPile.o : mainPile.c Pile.h
 	cc $(CFLAGS) -c mainPile.c
 
 mainPile : Pile.o utils_v1.o mainPile.o
