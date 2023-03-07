@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 #include "utils_v2.h"
 
@@ -11,18 +13,53 @@
 
 int main(int argc, char **argv)
 {
-
-  // Opening file
-  int fd = open(FILENAME, O_WRONLY | O_TRUNC | O_CREAT, 0777);
-  checkNeg(fd, "Error opening file");
-
-  // Writing
-  for (int i = 0; i < NBR_ENTIERS; i++)
+  if (argc != 3)
   {
-    int nbCharWr = write(fd, &i, sizeof(int));
-    if (nbCharWr != sizeof(int))
-    {
-      perror("Error writing file");
-    }
+    perror("Missing files in argument");
+    exit(1);
   }
+
+  char bufferRead[BUFFERSIZE];
+
+  /* Opening the file in write mode */
+  int fd1 = open(argv[1], O_WRONLY | O_TRUNC | O_CREAT, 0644);
+  checkNeg(fd1, "Error opening file");
+
+  int fd2 = open(argv[2], O_WRONLY | O_TRUNC | O_CREAT, 0644);
+  checkNeg(fd2, "Error opening file");
+
+  /* Reading STDIN, then writing file, up to EOF (Ctrl-D) */
+  char *msg = "Enter text lines (Ctrl-D to terminate):\n";
+  int len = strlen(msg);
+  int nbCharWr = write(1, msg, len);
+  checkCond(nbCharWr != len, "Error writing on stdout");
+
+  char c;
+
+  int nbCharRd = read(0, bufferRead, BUFFERSIZE);
+  while (nbCharRd > 0)
+  {
+    // +80 char line treatment
+    if (nbCharRd == 80 && bufferRead[80] != '\n')
+    {
+      while (1)
+      {
+        read(0, &c, 1);
+        if (c == '\n') break;
+      }
+    }
+
+    if (isupper(bufferRead[0]))
+    {
+      nbCharWr = write(fd1, bufferRead, nbCharRd);
+    }
+    else if (islower(bufferRead[0]))
+    {
+      nbCharWr = write(fd2, bufferRead, nbCharRd);
+    }
+    checkCond(nbCharWr != nbCharRd, "Error writing file");
+    nbCharRd = read(0, bufferRead, BUFFERSIZE);
+  }
+
+  checkNeg(nbCharRd, "Error reading stdin");
 }
