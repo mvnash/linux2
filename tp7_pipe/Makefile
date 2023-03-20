@@ -19,4 +19,4 @@ utils_v2.o: utils_v2.c utils_v2.h
 
 clean:
 	rm -f *.o
-	rm -f minusculeToMaj
+	rm -f minusculeToMaj pgmInscription

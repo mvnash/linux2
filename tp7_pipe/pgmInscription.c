@@ -1,67 +1,91 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <ctype.h>
 
+#include "inscriptionRequest.h"
 #include "utils_v2.h"
 
-int main(int argc, char const *argv[])
+static void child(void *arg1, void *arg2)
 {
-    // 1/ Création du pipe
-    int pipefd[2];
-    int ret = pipe(pipefd);
-    checkNeg(ret, "pipe error");
+   int *pipefdPC = arg1;
+   int *pipefdCP = arg2;
 
-    // 2/ Création de l'enfant
-    int childId = sfork();
+   // Configuration des pipes
+   sclose(pipefdPC[1]);
+   sclose(pipefdCP[0]);
 
-    // PARENT
-    if (childId > 0)
-    {
-        // 3/ Cloture du descripteur pour la lecture
-        ret = close(pipefd[0]);
-        checkNeg(ret, "close error");
+   int fd_stdout = dup(1);  // sauvegarde du fd de stdout
+   checkNeg(fd_stdout, "Dup failed\n");
+   int ret = dup2(pipefdCP[1], 1);  // duplication de pipefdCP[1] sur fd 1
+   checkNeg(ret, "Dup2 failed\n");  // ==> écrire sur fd 1 (écran) écrit en réalité sur pipefdCP[1]
 
-        // 4// On écrit un entier pour le fils
-        char bufferRead[256];
-        int nbRead = 0;
-        while ( (nbRead = read(0, bufferRead, 256)) > 0)
-        {
-            int nbChar = write(pipefd[1], bufferRead, nbRead * sizeof(char));
-            checkCond(nbChar < 0, "write error");
-        }
+   // Lecture sur pipe PC --> écriture sur 1 (=pipefdCP[1])
+   InscriptionRequest ir;
+   int nbTrans = sread(pipefdPC[0], &ir, sizeof(InscriptionRequest));
+   while (nbTrans != 0) {
+      int rep = (ir.nbYearPastInEducation < 3) ? 1 : 0;
+      nwrite(1, &rep, sizeof(int));
+      nbTrans = sread(pipefdPC[0], &ir, sizeof(InscriptionRequest));
+   }
 
-        // 5/ On clôture le côté écriture du pipe
-        ret = close(pipefd[1]);
-        checkNeg(ret, "close error");
-    }
-    // FILS
-    else
-    {
-        // 3// Cloture du descripteur d'écriture
-        int ret = close(pipefd[1]);
-        checkNeg(ret, "close error");
+   // Fermeture des pipes
+   sclose(pipefdPC[0]);
+   sclose(pipefdCP[1]);
+   ret = dup2(fd_stdout, 1);  // restauration de stdout sur le fd 1
+   checkNeg(ret, "Dup2 failed\n");
+   sclose(fd_stdout);
+   printf("Moi, le fils, j'ai fini mon boulot !\n");
+}
 
-        // 4// On attend un entier de la part du père
-        char bufferRead[256];
-        int nbChar = read(pipefd[0], bufferRead, 256 * sizeof(char));
-        checkCond(nbChar <= 0, "read error");
 
-        int i = 0;
-        while (bufferRead[i] != '\n')
-        {
-            bufferRead[i] = toupper(bufferRead[i]);
-            i++;
-        }
+int main(int argc, char **argv)
+{
+   // Création des pipes
+   // PC: parent -> child
+   int pipefdPC[2];
+   spipe(pipefdPC);
 
-        printf("%s", bufferRead);
+   // CP: child -> parent
+   int pipefdCP[2];
+   spipe(pipefdCP);
 
-        // 5/ On clôture le côté lecture du pipe
-        ret = close(pipefd[0]);
-        checkNeg(ret, "close error");
-    }
+   // Création d'un processus fils
+   pid_t childId = fork_and_run2(child, pipefdPC, pipefdCP);
+
+   // Configuration des pipes
+   sclose(pipefdPC[0]);
+   sclose(pipefdCP[1]);
+
+   // Lecture sur 0 -> écriture dans pipe PC
+   InscriptionRequest ir;
+   int rep;
+   int nbInscriptions = 0;
+   int i = 0;
+   int nbTrans = sread(0, &ir, sizeof(InscriptionRequest));
+   while (nbTrans != 0) {
+      if (i % 2 == 0) {
+         // Envoi au fils
+         nwrite(pipefdPC[1], &ir, sizeof(InscriptionRequest));
+         printf("Attente trt par le fils .... %s %s %i\n", ir.firstname, ir.name, ir.nbYearPastInEducation);
+         sread(pipefdCP[0], &rep, sizeof(int));
+         if (rep) {
+            nbInscriptions++;
+         }
+      } else {
+         printf("Trt par le père : %s %s %i\n", ir.firstname, ir.name, ir.nbYearPastInEducation);
+         if (ir.nbYearPastInEducation < 3) {
+            nbInscriptions++;
+         }
+      }
+      i++;
+      nbTrans = sread(0, &ir, sizeof(InscriptionRequest));
+   }
+
+   printf("\nOK, mon fils n'a plus rien à me transmettre\n");
+
+   // Fermeture des pipes
+   sclose(pipefdCP[0]);
+   sclose(pipefdPC[1]);
+   printf("Père : Total des inscriptions acceptées : %i\n", nbInscriptions);
+
+   swaitpid(childId, NULL, 0);
 }
