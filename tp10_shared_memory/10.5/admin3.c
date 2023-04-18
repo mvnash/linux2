@@ -7,10 +7,7 @@
 #include <string.h>
 
 #include "utils_v2.h"
-
-#define KEY 683
-#define KEYSEM 672
-#define PERM 0666
+#include "ipc_conf.h"
 
 int main(int argc, char const *argv[])
 {
@@ -26,5 +23,10 @@ int main(int argc, char const *argv[])
 
         sshmdelete(shm_id);
         sem_delete(semId);
+    } else
+    {
+        printf("Utilisez -c pour creer et -d pour supprimer");
     }
+    
+
 }

@@ -8,20 +8,20 @@
 
 #include "utils_v2.h"
 
-#define KEY 683
-#define KEYSEM 672
+#define KEY 685
+#define KEYSEM 675
 #define PERM 0666
 
 int main(int argc, char const *argv[])
 {
     if (strcmp(argv[1], "-c") == 0)
     {
-        sshmget(KEY, sizeof(int)*2, IPC_CREAT | IPC_EXCL | PERM);
+        sshmget(KEY, sizeof(char)*10, IPC_CREAT | IPC_EXCL | PERM);
         sem_create(KEYSEM, 1, PERM, 1);
     }
     else if (strcmp(argv[1], "-d") == 0)
     {
-        int shm_id = sshmget(KEY, sizeof(int)*2, 0);
+        int shm_id = sshmget(KEY, sizeof(char)*10, 0);
         int semId = sem_get(KEYSEM, 1);
 
         sshmdelete(shm_id);

@@ -18,7 +18,7 @@ int main(int argc, char const *argv[])
     int shm_id = sshmget(KEY, sizeof(int), IPC_CREAT | IPC_EXCL | PERM);
     int *z = sshmat(shm_id);
 
-    int semId = semget (KEYSEM, 1, IPC_CREAT | IPC_EXCL | PERM);
+    int semId = sem_create(KEYSEM, 1, PERM,1)
 
     while (nbSecondes <= 60)
     {
@@ -28,5 +28,7 @@ int main(int argc, char const *argv[])
         sem_up0(semId);
         nbSecondes += 3;
     }
+    sshmdelete(shm_id);
+    sem_delete(semId);
     return 0;
 }
