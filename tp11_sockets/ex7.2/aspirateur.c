@@ -11,7 +11,11 @@
 
 #include "utils_v2.h"
 
-#define BACKLOG 5
+#define INPUT_FILE "sitemap.txt"
+#define PERMS 0644
+#define WEB_SERVER "ochoquet.be"
+#define WEB_SERVER_PORT 80
+#define BUFFER_SIZE 80
 
 // PRE: ServerIP : a valid IP address
 //      ServerPort: a valid port number
@@ -20,41 +24,51 @@
 //       on failure, displays error cause and quits the program
 int initSocketClient(char * serverIP, int serverport)
 {
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if(sockfd < 0) {
-    printf("Socket client error");
-    exit(1);
-  }
-
-  struct sockaddr_in addr;
-  memset(&addr,0,sizeof(addr));
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(serverport);
-  inet_aton(serverIP,&addr.sin_addr);
-  int returnConnect = connect(sockfd, (struct sockaddr *) &addr, sizeof(addr));
-  if(returnConnect < 0) {
-    printf("Connect client error");
-    exit(1);
-  }
-
+  int sockfd = ssocket();
+  sconnect(serverIP, serverport, sockfd);
   return sockfd;
 }
 
 int main(int argc, char **argv)
 {
-    char ip[17];
-    hostname_to_ip("ochoquet.be",ip);
+  size_t nbChar;
+  int fd;
+  char ligne[BUFFER_SIZE];
 
-    int file = sopen("sitemap.txt", O_RDONLY ,0777);
-    char page[1000];
-    while (readLimitedLineOnFile(file,page,1000))
+  fd = sopen(INPUT_FILE, O_RDONLY, 0);
+  // checkNull(file, "open sitemap error");
+
+  char ip[18];
+  hostname_to_ip(WEB_SERVER, ip);
+  printf("IPv4 %s : %s\n", WEB_SERVER, ip);
+  FILE *file = fdopen(fd, "r");
+
+  while ((fgets(ligne, BUFFER_SIZE, file)) != NULL)
+  {
+    printf("Ligne : %s ,strlen :%lu\n", ligne, strlen(ligne));
+
+    char pageName[BUFFER_SIZE];
+    ligne[strlen(ligne) - 1] = '\0';
+    sprintf(pageName, "%s", strrchr(ligne, '/') + 1);
+    printf("Page Name : %s\n", pageName);
+
+    int sockfd = initSocketClient(ip, WEB_SERVER_PORT);
+    // No need to check: exits program on failure
+    // checkNeg(sockfd,"socket init client error");
+
+    char request[2 * BUFFER_SIZE];
+    sprintf(request, "GET %s HTTP/1.0\r\nHost: %s\r\n\r\n", ligne, WEB_SERVER);
+    swrite(sockfd, request, strlen(request));
+
+    int fdHTMLPage = sopen(pageName, O_RDWR | O_TRUNC | O_CREAT, PERMS);
+
+    char response[BUFFER_SIZE];
+    while ((nbChar = sread(sockfd, response, BUFFER_SIZE)) > 0)
     {
-        printf("%s\n",page);
-        //initSocketClient(ip,80);
-        sprintf(page,"%s",strrchr(page,'/')+1);
-        printf("%s\n", page);
+      nwrite(fdHTMLPage, response, nbChar);
     }
-    
-    
+
+    sclose(sockfd);
+    sclose(fdHTMLPage);
+  }
 }

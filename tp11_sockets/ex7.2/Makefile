@@ -16,4 +16,5 @@ utils_v2.o: utils_v2.c utils_v2.h
 
 clean:
 	rm -f *.o
+	rm -f *.html
 	rm -f $(ALL)		
