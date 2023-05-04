@@ -179,7 +179,7 @@ int sexecl(const char *path, const char *arg, ...);
 // IO
 //*****************************************************************************
 
-//NOTE: This is a safe version of the "close" system call
+//NOTE: This is a safe version of the "open" system call
 int sopen(const char *pathname, int flags, mode_t mode);
 
 //NOTE: This is a safe version of the "close" system call
